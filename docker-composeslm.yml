@@ -1,0 +1,36 @@
+version: "3"
+services:
+  api-server:
+    container_name: api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: npm run prodsiteslm
+    volumes: 
+      - .:/tmp
+      - .:/app/backend
+      - library_backend:/app/backend/node_modules
+      - /reactcert/:/app/backend/reactcert
+    ports:
+      - "3000:3000"
+    restart: always
+  api-server-https:
+    container_name: apihttps
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: npm run prodsiteslms
+    volumes: 
+      - .:/tmp
+      - .:/app/backend
+      - libraryhttps_backend:/app/backend/node_modules
+      - /reactcert/:/app/backend/reactcert
+      - /apps/uploads:/app/backend/uploads
+    ports:
+      - "4100:3000"
+    restart: always
+volumes:
+  library_backend:
+    driver: local
+  libraryhttps_backend:
+    driver: local

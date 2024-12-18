@@ -1,0 +1,110 @@
+version: "3"
+services:
+  api-server:
+    container_name: api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: npm run devserver2
+    volumes: 
+      - .:/tmp
+      - .:/app/backend
+      - /apps/Uploads:/app/backend/uploads
+      - library_backend:/app/backend/node_modules
+    ports:
+      - "3000:3000"
+    restart: on-failure
+    # environment:
+    #   - SMB_USERNAME=root
+    #   - SMB_PASSWORD=
+    #   - SMB_SHARE=//10.20.2.100/UPLOAD-Eproc/uploads
+    # cap_add:
+    #   - SYS_ADMIN
+    #   - DAC_READ_SEARCH
+  api-gcmserver:
+    container_name: apigcm
+    image: eplant2-be_api-server
+    command: npm run gcm
+    volumes: 
+      - .:/tmp
+      - .:/app/backend
+      - library_gcmbackend:/app/backend/node_modules
+    ports:
+      - "3100:3100"
+    restart: on-failure
+  api-smgserver:
+    container_name: apismg
+    image: eplant2-be_api-server
+    command: npm run smg
+    volumes: 
+      - .:/tmp
+      - .:/app/backend
+      - library_smgbackend:/app/backend/node_modules
+    ports:
+      - "3200:3200"
+    restart: on-failure
+  api-sbeserver:
+    container_name: apisbe
+    image: eplant2-be_api-server
+    command: npm run sbe
+    volumes: 
+      - .:/tmp
+      - .:/app/backend
+      - library_sbebackend:/app/backend/node_modules
+    ports:
+      - "3300:3300"
+    restart: on-failure
+  api-slmserver:
+    container_name: apislm
+    image: eplant2-be_api-server
+    command: npm run slm
+    volumes: 
+      - .:/tmp
+      - .:/app/backend
+      - library_slmbackend:/app/backend/node_modules
+    ports:
+      - "3400:3400"
+    restart: on-failure
+  api-sjeserver:
+    container_name: apisje
+    image: eplant2-be_api-server
+    command: npm run sje
+    volumes: 
+      - .:/tmp
+      - .:/app/backend
+      - library_sjebackend:/app/backend/node_modules
+    ports:
+      - "3500:3500"
+    restart: on-failure
+  api-ustpserver:
+    container_name: apiustp
+    image: eplant2-be_api-server
+    command: npm run ustp
+    volumes: 
+      - .:/tmp
+      - .:/app/backend
+      - library_ustpbackend:/app/backend/node_modules
+    ports:
+      - "3600:3600"
+    restart: on-failure
+volumes:
+  # file:
+  #   driver: local
+  #   driver_opts:
+  #     type: cifs
+  #     device: "//10.20.2.100/UPLOAD-Eproc/uploads"
+  #     o: "username=root,password="
+  library_backend:
+    driver: local
+  library_gcmbackend:
+    driver: local
+  library_slmbackend:
+    driver: local
+  library_smgbackend:
+    driver: local
+  library_sbebackend:
+    driver: local
+  library_sjebackend:
+    driver: local
+  library_ustpbackend:
+    driver: local

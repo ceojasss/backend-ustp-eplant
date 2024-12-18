@@ -1,0 +1,241 @@
+image: docker
+
+services:
+  - docker:dind
+
+stages:
+  - development
+  - production
+  - productionbackup
+  - beeproc
+  - besje
+  - beslm
+  - besbe
+  - begcm
+  - besmg
+  - besingle
+# testing hheehehhehecobalagitestestestestes    - docker-compose down - docker-compose up -d --build
+development:
+  stage: development
+  tags:
+    - devbackend
+  only: 
+    - main
+  script:
+    # - git checkout HEAD^
+    # - git checkout main
+    # - git merge origin/main
+    # - git rebase origin/main
+    - git pull origin main
+    # - sudo docker-compose -f docker-compose.yml down
+    # - docker volume rm eplant2-be_library_backend
+    # - docker volume rm eplant2-be_library_gcmbackend
+    # - docker volume rm eplant2-be_library_slmbackend
+    # - docker volume rm eplant2-be_library_smgbackend
+    # - docker volume rm eplant2-be_library_sbebackend
+    # - docker volume rm eplant2-be_library_sjebackend
+    # - docker volume rm eplant2-be_library_ustpbackend
+    - sudo docker-compose -f docker-compose.yml build
+    # - sudo docker stop api
+    # - sudo docker rm api
+    - sudo COMPOSE_HTTP_TIMEOUT=200 docker-compose -f docker-compose.yml up -d
+
+beeproc:
+  stage: beeproc
+  tags:
+    - beeproc
+  only: 
+    - main
+  script:
+    # - git checkout HEAD^
+    - git checkout main
+    # - git merge origin/main
+    # - git rebase origin/main
+    - git pull origin main
+    - docker compose -f docker-composeeproc.yml down
+    - docker volume rm eplant2-be_library_backend
+    # - docker volume rm eplant2-be_library_gcmbackend
+    # - docker volume rm eplant2-be_library_slmbackend
+    # - docker volume rm eplant2-be_library_smgbackend
+    # - docker volume rm eplant2-be_library_sbebackend
+    # - docker volume rm eplant2-be_library_sjebackend
+    # - docker volume rm eplant2-be_library_ustpbackend
+    - docker compose -f docker-composeeproc.yml build
+    # - sudo docker stop api
+    # - sudo docker rm api
+    - COMPOSE_HTTP_TIMEOUT=200 docker compose -f docker-composeeproc.yml up -d
+  environment: beeproc
+  when: manual
+
+besingle:
+  stage: besingle
+  tags:
+    - besingle
+  only: 
+    - productionbackup
+  script:
+    # - git checkout HEAD^
+    - git checkout productionbackup
+    # - git merge origin/main
+    # - git rebase origin/main
+    - git pull origin productionbackup
+    - docker compose -f docker-composesingleport.yml down
+    - docker rmi eplant2-be-api-server:latest
+    - docker volume rm eplant2-be_library_backend
+    # - docker volume rm eplant2-be_library_backend
+    # - docker volume rm eplant2-be_library_gcmbackend
+    # - docker volume rm eplant2-be_library_slmbackend
+    # - docker volume rm eplant2-be_library_smgbackend
+    # - docker volume rm eplant2-be_library_sbebackend
+    # - docker volume rm eplant2-be_library_sjebackend
+    # - docker volume rm eplant2-be_library_ustpbackend
+    - docker compose -f docker-composesingleport.yml build
+    # - sudo docker stop api
+    # - sudo docker rm api
+    - COMPOSE_HTTP_TIMEOUT=200 docker compose -f docker-composesingleport.yml up -d
+  environment: besingle
+  # when: manual
+
+production:
+  stage: production
+  tags:
+    - prodbackend
+    # - prodbackend2
+  only:
+    - production
+  script:
+    - git checkout production 
+    - git pull origin production
+    - sudo docker-compose -f docker-composeprod.yml down
+    - docker volume rm eplant2-be_library_backend
+    - docker volume rm eplant2-be_library_gcmbackend
+    - docker volume rm eplant2-be_library_slmbackend
+    - docker volume rm eplant2-be_library_smgbackend
+    - docker volume rm eplant2-be_library_sbebackend
+    - docker volume rm eplant2-be_library_sjebackend
+    - docker volume rm eplant2-be_library_ustpbackend
+    - docker volume rm eplant2-be_library_tstbackend
+    - sudo docker-compose -f docker-composeprod.yml build
+    - sudo COMPOSE_HTTP_TIMEOUT=200 docker-compose -f docker-composeprod.yml up -d
+  environment: production
+  when: manual
+
+
+productionbackup:
+  stage: productionbackup
+  tags:
+    # - prodbackend
+    - prodbackend2
+  only:
+    - productionbackup
+  script:
+    - git checkout productionbackup 
+    - git pull origin productionbackup
+    - sudo docker-compose -f docker-composeprodbackup.yml down
+    - docker volume rm eplant2-be_library_backend
+    - docker volume rm eplant2-be_library_gcmbackend
+    - docker volume rm eplant2-be_library_slmbackend
+    - docker volume rm eplant2-be_library_smgbackend
+    - docker volume rm eplant2-be_library_sbebackend
+    - docker volume rm eplant2-be_library_sjebackend
+    - docker volume rm eplant2-be_library_ustpbackend
+    - docker volume rm eplant2-be_library_tstbackend
+    - sudo docker-compose -f docker-composeprodbackup.yml build
+    - sudo COMPOSE_HTTP_TIMEOUT=200 docker-compose -f docker-composeprodbackup.yml up -d
+  environment: productionbackup
+  when: manual
+
+
+besje:
+  stage: besje
+  tags:
+    # - prodbackend
+    - besje
+  only:
+    - site
+  script:
+    - git checkout site 
+    # - git pull origin site
+    - git pull origin site --allow-unrelated-histories --rebase
+    - docker-compose -f docker-composesje.yml down
+    - docker volume rm eplant2-be_library_backend
+    - docker-compose -f docker-composesje.yml build
+    - COMPOSE_HTTP_TIMEOUT=200 docker-compose -f docker-composesje.yml up -d
+  environment: besje
+  when: manual
+
+
+beslm:
+  stage: beslm
+  tags:
+    # - prodbackend
+    - beslm
+  only:
+    - site
+  script:
+    - git checkout site 
+    # - git pull origin site
+    - git pull origin site --allow-unrelated-histories --rebase
+    - docker-compose -f docker-composeslm.yml down
+    - docker volume rm eplant2-be_library_backend
+    - docker-compose -f docker-composeslm.yml build
+    - COMPOSE_HTTP_TIMEOUT=200 docker-compose -f docker-composeslm.yml up -d
+  environment: beslm
+  when: manual
+
+
+besbe:
+  stage: besbe
+  tags:
+    # - prodbackend
+    - besbe
+  only:
+    - site
+  script:
+    - git checkout site 
+    # - git pull origin site
+    - git pull origin site --allow-unrelated-histories --rebase
+    - docker-compose -f docker-composesbe.yml down
+    - docker volume rm eplant2-be_library_backend
+    - docker-compose -f docker-composesbe.yml build
+    - COMPOSE_HTTP_TIMEOUT=200 docker-compose -f docker-composesbe.yml up -d
+  environment: besbe
+  when: manual
+
+
+begcm:
+  stage: begcm
+  tags:
+    # - prodbackend
+    - begcm
+  only:
+    - site
+  script:
+    - git checkout site 
+    # - git pull origin site
+    - git pull origin site --allow-unrelated-histories --rebase
+    - docker-compose -f docker-composegcm.yml down
+    - docker volume rm eplant2-be_library_backend
+    - docker-compose -f docker-composegcm.yml build
+    - COMPOSE_HTTP_TIMEOUT=200 docker-compose -f docker-composegcm.yml up -d
+  environment: begcm
+  when: manual
+
+
+besmg:
+  stage: besmg
+  tags:
+    # - prodbackend
+    - besmg
+  only:
+    - site
+  script:
+    - git checkout site 
+    # - git pull origin site
+    - git pull origin site --allow-unrelated-histories --rebase
+    - docker-compose -f docker-composesmg.yml down
+    - docker volume rm eplant2-be_library_backend
+    - docker-compose -f docker-composesmg.yml build
+    - COMPOSE_HTTP_TIMEOUT=200 docker-compose -f docker-composesmg.yml up -d
+  environment: besmg
+  when: manual

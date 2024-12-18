@@ -1,0 +1,20 @@
+version: "3"
+services:
+  api-server:
+    container_name: api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: npm run prodsingleport
+    volumes: 
+      - .:/tmp
+      - .:/app/backend
+      - library_backend:/app/backend/node_modules
+      - /apps/uploads:/app/backend/uploads
+      - /reactcert/:/app/backend/reactcert
+    ports:
+      - "3000:3000"
+    restart: always
+volumes:
+  library_backend:
+    driver: local

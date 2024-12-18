@@ -1,0 +1,301 @@
+const _ = require('lodash')
+const oracledb = require('oracledb')
+const database = require('../../../../oradb/dbHandler')
+
+/**
+ * ! change query table header
+ */
+const baseQuery = `select x.rowid "rowid",x.ppocode "ppocode",prcode "prcode", to_char(x.ppodate, 'dd-mm-yyyy hh24:mi') "ppodate",suppliercode "suppliercode#code",
+get_suppliername(suppliercode) "suppliercode#description",DOC_TYPE "doc_type",pickuppoint "pickuppoint",to_char(doc_receivedate,'dd-mm-yyyy') "doc_receivedate",
+remarks "remarks",downpayment_info "downpayment_info",authorized "authorized",delivered "delivered",transportationcost "transportationcost",customclearancecost "customclearancecost",othercost "othercost",
+    v_url_preview_site (
+    'PPO',
+    CASE WHEN process_flag IS NULL THEN 'DRAFT' ELSE 'APPROVED' END) || x.ppocode "v_url_preview",direktur "direktur",noktp "noktp",garansi "garansi",lain "lain", norek "norek#code",
+namabank "namabank",namabank "norek#description", namapenerima "namapenerima",notelp "notelp",
+currency "currency",topcode "topcode",deliveryinstruction "deliveryinstruction",franco "franco",purchasing_site "purchasing_site",
+include_transport "include_transport",agreementcode "agreementcode",pasal41 "pasal41",kat_barang "kat_barang",
+payment_address "payment_address",to_char(required_date, 'dd-mm-yyyy') "required_date",process_flag "process_flag",inputby "inputby",
+ to_char(inputdate, 'dd-mm-yyyy hh24:mi') "inputdate", updateby "updateby", to_char(updatedate, 'dd-mm-yyyy hh24:mi') "updatedate"
+  from lppo x, view_lprppo y
+where x.ppocode = y.ppocode and (x.ppocode LIKE  UPPER('%' || :search ||'%') OR remarks LIKE  UPPER('%' || :search ||'%')
+OR prcode LIKE  UPPER('%' || :search ||'%')
+)
+  and case when :loginid not like '%HO' and x.ppocode like '%HO%' then null  else x.ppocode end = x.ppocode 
+  AND TO_CHAR (x.ppodate, 'mmyyyy') =
+  decode(:search,null,TO_CHAR (TO_DATE (:dateperiode, 'MM/YYYY'), 'mmyyyy'),to_char(x.ppodate,'mmyyyy'))
+  order by x.ppodate desc`
+
+
+
+/**
+ * ! change query table detail
+ */
+const detailQuery = `select rowid "rowid",
+tid "tid",prcode "prcode", pr_tid "pr_tid",ppocode "ppocode",itemcode "itemcode",quantity "quantity",amount "amount",
+unitprice "unitprice",itemdescription "itemdescription",UOM "uom",statusppn "statusppn",
+otheritemdesc "otheritemdesc",pph "pph",
+polineno "polineno",inputby "inputby", to_char(inputdate, 'dd-mm-yyyy hh24:mi') "inputdate", updateby "updateby", to_char(updatedate, 'dd-mm-yyyy hh24:mi') "updatedate"
+ from lppodetails
+where ppocode = :ppocode`
+
+
+const QueryDataLink = `SELECT prcode "prcode",TO_CHAR (prdate, 'dd-mm-yyyy') "prdate",prrequestfrom "prrequestfrom",prnotes "prnotes",process_flag "process_flag"
+FROM (  SELECT prcode, prdate, prrequestfrom, prnotes,process_flag
+     FROM lpr
+    WHERE PRCODE IN
+                  (SELECT DISTINCT PRCODE
+                     FROM LPRDETAILS
+                    WHERE     NVL (ORDERED_QTY, 0) < NVL (APPROVED_QUANTITY, 0)
+                          AND NOT EXISTS
+                                  (SELECT *
+                                     FROM lprpo o
+                                    WHERE     o.pocode = :ppocode
+                                          AND o.itemcode = lprdetails.itemcode
+                                          AND o.prcode = lprdetails.prcode
+                                          AND o.locationtype = lprdetails.locationtype
+                                          AND o.locationcode = lprdetails.locationcode
+                                          AND o.jobcode = lprdetails.jobcode)
+                          AND prcode IN
+                                  (SELECT prcode
+                                     FROM lpr
+                                    WHERE     prdate <=
+                                              TO_DATE ( :ppodate,
+                                                       'dd-mm-yyyy')
+                                          AND process_flag = 'APPROVED')
+                          AND purchasing_site = :purchasing_site)
+          AND (   prcode LIKE UPPER ('%' || :search || '%')
+               OR UPPER (prrequestfrom) LIKE UPPER ('%' || :search || '%')
+               OR UPPER (prnotes) LIKE UPPER ('%' || :search || '%'))
+ ORDER BY prdate DESC)
+WHERE ROWNUM < 10`
+
+const QueryDataLinkNonsite = `SELECT prcode "prcode",TO_CHAR (prdate, 'dd-mm-yyyy') "prdate",prrequestfrom "prrequestfrom",prnotes "prnotes",process_flag "process_flag"
+FROM (  SELECT prcode, prdate, prrequestfrom, prnotes,process_flag
+     FROM lpr
+    WHERE PRCODE IN
+                  (SELECT DISTINCT PRCODE
+                     FROM LPRDETAILS
+                    WHERE     NVL (ORDERED_QTY, 0) < NVL (APPROVED_QUANTITY, 0)
+                          AND NOT EXISTS
+                                  (SELECT *
+                                     FROM lprpo o
+                                    WHERE     o.pocode = :pocode
+                                          AND o.itemcode = lprdetails.itemcode
+                                          AND o.prcode = lprdetails.prcode
+                                          AND o.locationtype = lprdetails.locationtype
+                                          AND o.locationcode = lprdetails.locationcode
+                                          AND o.jobcode = lprdetails.jobcode)
+                          AND prcode IN
+                                  (SELECT prcode
+                                     FROM lpr
+                                    WHERE     prdate <=
+                                              TO_DATE ( :podate,
+                                                       'dd-mm-yyyy')
+                                          AND process_flag = 'APPROVED')
+                          )
+          AND (   prcode LIKE UPPER ('%' || :search || '%')
+               OR UPPER (prrequestfrom) LIKE UPPER ('%' || :search || '%')
+               OR UPPER (prnotes) LIKE UPPER ('%' || :search || '%'))
+ ORDER BY prdate DESC)
+WHERE ROWNUM < 10`
+
+
+const QueryDataLinkDetails = `SELECT 
+prcode "prcode",
+itemcode || ' - ' || itemdescription "item",
+itemcode /*|| ' - ' || itemdescription */ "itemcode",
+itemdescription "itemdescription",
+TO_CHAR (expectdate, 'dd-mm-yyyy') "expectdate",
+get_maxitemprice_f(itemcode) "unitprice",
+nvl(approved_quantity,0) - NVL (ordered_qty, 0) "quantity_table",
+uomcode "uom",
+tid "pr_tid",
+tid "tid"
+FROM LPRdetails
+WHERE prcode = :prcode
+ORDER BY case when nvl(approved_quantity,0) - NVL (ordered_qty, 0) = 0 then 99 else 1 end ,itemcode`
+
+const fetchDataHeader = async function (users, params, routes, callback) {
+
+    binds = {}
+
+
+    binds.limitsize = (!params.size ? 0 : params.size)
+    binds.page = (!params.page ? 1 : params.page)
+    binds.search = (!params.search ? '' : params.search)
+    binds.dateperiode = (!params.dateperiode ? '' : params.dateperiode)
+
+    let result
+
+    try {
+        result = await database.siteLimitExecute(users, routes, baseQuery, binds)
+
+        // console.log(result)
+    } catch (error) {
+        callback(error, '')
+    }
+
+
+
+    callback('', result)
+}
+
+const fetchDataDetail = async function (users, routes, params, callback) {
+
+    binds = {}
+
+
+
+    /**
+     * ! change the parameters according to the table
+     */
+    binds.ppocode = (!params.ppocode ? '' : params.ppocode)
+
+    let result
+
+    try {
+        result = await database.siteWithDefExecute(users, routes, detailQuery, binds)
+
+
+
+    } catch (error) {
+        callback(error, '')
+    }
+
+
+
+    callback('', result)
+}
+
+const fetchDataLinkHeader = async function (users, routes, params, callback) {
+
+    binds = {}
+
+
+    /**
+     * ! change the parameters according to the table
+     */
+    binds.ppocode = (!params.ppocode ? '' : params.ppocode)
+    binds.ppodate = (!params.ppodate ? '' : params.ppodate)
+    binds.search = (!params.search ? '' : params.search)
+    binds.purchasing_site = users.loginid.match(/^.*HO$/) ? 'HO': 'SO'
+    let result
+    // if (users.loginid.match(/^.*HO$/)) {
+    //     let binds2 = _.omit(binds, ['purchasing_site'])
+    //     try {
+    //         result = await database.siteWithDefExecute(users, routes, QueryDataLinkNonsite, binds2)
+
+    //     } catch (error) {
+    //         callback(error, '')
+    //     }
+    // } else {
+       
+        try {
+            result = await database.siteWithDefExecute(users, routes, QueryDataLink, binds)
+
+        } catch (error) {
+            callback(error, '')
+        }
+    // }
+
+
+
+    callback('', result)
+}
+
+
+const fetchDataLinkDetails = async function (users, routes, params, callback) {
+
+    binds = {}
+
+    /**
+     * ! change the parameters according to the table
+     */
+    binds.prcode = (!params.code ? '' : params.code)
+
+    let result
+
+    try {
+        result = await database.siteWithDefExecute(users, routes, QueryDataLinkDetails, binds)
+
+    } catch (error) {
+        callback(error, '')
+    }
+
+
+
+    callback('', result)
+}
+
+
+const CheckAgreement = async function (users, routes, params, callback) {
+
+    binds = {}
+// console.log(params)
+// 'L05805','HA',12
+    /**
+   * ! change the parameters according to the table
+   */
+    binds.tdate = (!params.tdate ? '' : params.tdate)
+
+
+    let result
+
+    // console.log(users.loginid)
+
+    //    (users, statement, binds, opts = {})
+    try {
+// console.log(binds)
+        // const stmt = `select check_ha_cr ('L05805','HA',12) "ha" from dual`
+        const stmt = `select get_pposccode ( to_date(:tdate,'DD/MM/YYYY')) "agreementcode" from dual`
+
+        result = await database.siteWithDefExecute(users, routes, stmt, binds)
+        
+
+    } catch (error) {
+        callback(error)
+    }
+
+    callback('', result)
+}
+
+const runEmail = async function (users, params) {
+
+    binds = {
+        // agreementcode: params.agreementcode,
+        // rid: {
+        //     type: oracledb.STRING,
+        //     dir: oracledb.BIND_OUT
+        // }
+    }
+
+// console.log(params)
+    binds.agreementcode = (!params.agreementcode ? '' : params.agreementcode)
+    binds
+    let result
+    let statement = `BEGIN  
+    EPMS_USTP.AUTO_EMAIL_PPO (:agreementcode);  
+     END;`
+    // console.log(binds)
+    try {
+        result = await database.execFunc(users, statement, binds)
+
+        // console.log(result)
+    } catch (error) {
+        return result
+    }
+
+
+
+    return result
+}
+
+
+module.exports = {
+    fetchDataHeader,
+    fetchDataDetail,
+    fetchDataLinkDetails,
+    fetchDataLinkHeader,
+    CheckAgreement,
+    runEmail
+}

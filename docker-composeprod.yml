@@ -1,0 +1,109 @@
+version: "3"
+services:
+  api-server:
+    container_name: api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: npm run prodapps
+    volumes: 
+      - .:/tmp
+      - .:/app/backend
+      - library_backend:/app/backend/node_modules
+    ports:
+      - "3000:3000"
+    restart: always
+  api-gcmserver:
+    container_name: apigcm
+    image: eplant2-be_api-server
+    command: npm run prodgcm
+    volumes: 
+      - .:/tmp
+      - .:/app/backend
+      - library_gcmbackend:/app/backend/node_modules
+    ports:
+      - "3100:3100"
+    restart: always
+  api-smgserver:
+    container_name: apismg
+    image: eplant2-be_api-server
+    command: npm run prodsmg
+    volumes: 
+      - .:/tmp
+      - .:/app/backend
+      - library_smgbackend:/app/backend/node_modules
+    ports:
+      - "3200:3200"
+    restart: always
+  api-sbeserver:
+    container_name: apisbe
+    image: eplant2-be_api-server
+    command: npm run prodsbe
+    volumes: 
+      - .:/tmp
+      - .:/app/backend
+      - library_sbebackend:/app/backend/node_modules
+    ports:
+      - "3300:3300"
+    restart: always
+  api-slmserver:
+    container_name: apislm
+    image: eplant2-be_api-server
+    command: npm run prodslm
+    volumes: 
+      - .:/tmp
+      - .:/app/backend
+      - library_slmbackend:/app/backend/node_modules
+    ports:
+      - "3400:3400"
+    restart: always
+  api-sjeserver:
+    container_name: apisje
+    image: eplant2-be_api-server
+    command: npm run prodsje
+    volumes: 
+      - .:/tmp
+      - .:/app/backend
+      - library_sjebackend:/app/backend/node_modules
+    ports:
+      - "3500:3500"
+    restart: always
+  api-ustpserver:
+    container_name: apiustp
+    image: eplant2-be_api-server
+    command: npm run produstp
+    volumes: 
+      - .:/tmp
+      - .:/app/backend
+      - library_ustpbackend:/app/backend/node_modules
+    ports:
+      - "3600:3600"
+    restart: always
+  api-tstserver:
+    container_name: apitst
+    image: eplant2-be_api-server
+    command: npm run prodtst
+    volumes: 
+      - .:/tmp
+      - .:/app/backend
+      - library_tstbackend:/app/backend/node_modules
+    ports:
+      - "3800:3800"
+    restart: always
+volumes:
+  library_backend:
+    driver: local
+  library_gcmbackend:
+    driver: local
+  library_slmbackend:
+    driver: local
+  library_smgbackend:
+    driver: local
+  library_sbebackend:
+    driver: local
+  library_sjebackend:
+    driver: local
+  library_ustpbackend:
+    driver: local
+  library_tstbackend:
+    driver: local
